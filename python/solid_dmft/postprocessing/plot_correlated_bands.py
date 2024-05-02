@@ -178,8 +178,6 @@ def _sigma_from_dmft(n_orb, orbital_order, with_sigma, spin, orbital_order_dmft=
     def interpolate_sigma(w_mesh, w_mesh_dmft, orb1, orb2): return np.interp(w_mesh, w_mesh_dmft, sigma_mat[:, orb1, orb2])
 
     for ct1, ct2 in itertools.product(range(n_orb), range(n_orb)):
-        if ct1 != ct2 and not SOC:
-            continue
         sigma_interpolated[ct1, ct2] = interpolate_sigma(w_mesh, w_mesh_dmft, ct1, ct2)
 
     return sigma_interpolated, mu_dmft, freq_dict
@@ -507,7 +505,7 @@ def get_kx_ky_FS(lower_right, upper_left, Z, tb, select=None, N_kxy=10, kz=0.0, 
 def _setup_plot_bands(ax, special_k, k_points_labels, freq_dict):
 
     ax.axhline(y=0, c='gray', ls='--', lw=0.8, zorder=0)
-    ax.set_ylabel(r'$\omega - \mu$ (eV)')
+    ax.set_ylabel(r'$\epsilon - \mu$ (eV)')
 #     ax.set_ylim(*freq_dict['window'])
     for ik in special_k:
         ax.axvline(x=ik, linewidth=0.7, color='k', zorder=0.5)
@@ -549,8 +547,10 @@ def plot_bands(fig, ax, alatt_k_w, tb_data, freq_dict, n_orb, tb=True, alatt=Fal
 
             graph = ax.pcolormesh(kw_x, kw_y, alatt_k_w.T, cmap=plot_dict['colorscheme_alatt'],
                                   norm=Normalize(vmin=vmin, vmax=vmax), shading='gouraud')
-            colorbar = plt.colorbar(graph)
-            colorbar.set_label(r'$A(k, \omega)$')
+
+            if 'colorbar' not in plot_dict or plot_dict['colorbar']:
+                colorbar = plt.colorbar(graph)
+                colorbar.set_label(r'$A(k, \omega)$')
 
     if tb:
         # if projection is requested, _get_tb_bands() ran already
@@ -589,7 +589,7 @@ def plot_dos(fig, ax, alatt_k_w, tb_data, freq_dict, tb=False, alatt=True, label
                 alatt_k_w.shape[0], label=label, color=color)
 
     ax.axvline(x=0, c='gray', ls='--', zorder=0)
-    ax.set_xlabel(r'$\omega - \mu$ (eV)')
+    ax.set_xlabel(r'$\epsilon - \mu$ (eV)')
     ax.set_ylabel(r'A($\omega$)')
 
     ax.set_xlim(*freq_dict['window'])
@@ -629,8 +629,10 @@ def plot_kslice(fig, ax, alatt_k_w, tb_data, freq_dict, n_orb, tb_dict, tb=True,
                                       cmap=plot_dict['colorscheme_kslice'],
                                       norm=Normalize(vmin=vmin, vmax=vmax),
                                       shading='gouraud')
-                #colorbar = plt.colorbar(graph)
-                #colorbar.set_label(r'$A(k, 0$)')
+
+            if 'colorbar' not in plot_dict or plot_dict['colorbar']:
+                colorbar = plt.colorbar(graph)
+                colorbar.set_label(r'$A(k, 0$)')
 
     if tb:
         FS_kx_ky, band_char = get_tb_kslice(tb_data['tb'], tb_data['mu_tb'], **tb_dict)
@@ -861,6 +863,7 @@ def get_dmft_bands(n_orb, w90_path, w90_seed, mu_tb, add_spin=False, add_lambda=
             delta_sigma, mu_dmft, freq_dict = _sigma_from_dmft(n_orb, orbital_order_to, with_sigma, **specs)
             mu = mu_dmft + mu_shift
 
+        freq_dict['sigma_upfolded'] = delta_sigma
         if add_mu_tb:
             print('Adding mu_tb to DMFT μ; assuming DMFT was run with subtracted dft μ.')
             mu += mu_tb
