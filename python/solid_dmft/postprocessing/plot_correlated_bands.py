@@ -628,6 +628,7 @@ def plot_kslice(fig, ax, alatt_k_w, tb_data, freq_dict, n_orb, tb_dict, tb=True,
             raise ValueError('A(k,w) unknown. Specify "with_sigma = True"')
         n_kx, n_ky = tb_data['e_mat'].shape[2:4]
         kx, ky = np.meshgrid(range(n_kx), range(n_ky))
+        draw_colorbar = True
         for (qx, qy) in used_quarters:
             if len(alatt_k_w.shape) > 2:
                 for orb in range(n_orb):
@@ -639,9 +640,10 @@ def plot_kslice(fig, ax, alatt_k_w, tb_data, freq_dict, n_orb, tb_dict, tb=True,
                                       norm=Normalize(vmin=vmin, vmax=vmax),
                                       shading='gouraud')
 
-            if 'colorbar' not in plot_dict or plot_dict['colorbar']:
-                colorbar = plt.colorbar(graph)
-                colorbar.set_label(r'$A(k, 0$)')
+                if draw_colorbar and ('colorbar' not in plot_dict or plot_dict['colorbar']):
+                    colorbar = plt.colorbar(graph)
+                    colorbar.set_label(r'$A(k, 0$)')
+                    draw_colorbar = False
 
     if tb:
         FS_kx_ky, band_char = get_tb_kslice(tb_data['tb'], tb_data['mu_tb'], **tb_dict)
