@@ -24,7 +24,7 @@ cmake_policy(VERSION 3.20)
 
 # ############
 # Define Project
-project(solid_dmft VERSION 3.2.2 LANGUAGES C CXX)
+project(solid_dmft VERSION 3.2.3 LANGUAGES C CXX)
 get_directory_property(IS_SUBPROJECT PARENT_DIRECTORY)
 
 # ############

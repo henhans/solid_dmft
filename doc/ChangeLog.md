@@ -2,6 +2,12 @@
 
 # Changelog
 
+## Version 3.2.3
+
+solid_dmft version 3.2.3 is a small extra bugfix correcting the following error:
+
+* draw coloarbar only once in kslices
+
 
 ## Version 3.2.2
 solid_dmft version 3.2.2 is a minor release that fixes bugs in the post-processing routines and brings small new improvements:
