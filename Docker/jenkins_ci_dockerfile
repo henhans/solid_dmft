@@ -2,6 +2,8 @@
 FROM flatironinstitute/cthyb:master-ubuntu-clang
 ARG APPNAME=solid_dmft
 
+RUN apt-get install -y meson ninja-build python3-setuptools
+
 ENV OMP_NUM_THREADS=1
 
 # install dfttools maxent hubbardI and HartreeFock
