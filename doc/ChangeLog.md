@@ -2,6 +2,19 @@
 
 # Changelog
 
+## Version 3.2.3
+solid_dmft version 3.2.3 and 3.2.2 are minor releases that fixes bugs in the post-processing routines and brings small new improvements:
+
+* allow 0.0 mixing to perform stat sampling
+* allow mathematical expression to be passed for random_seed
+* fix broken FS plot in PCB: np.shape -> len
+* fix PCB bug aprx Sigma as diagonal if interpolation is used
+* fix PCB to draw coloarbar only once in kslices
+
+We thank all contributors: Alexander Hampel, Henri Menke
+
+## Version 3.2.1
+solid_dmft version 3.2.1 is a minor release that automatizes the pypi packaging release
 
 ## Version 3.2.0
 
