@@ -35,57 +35,90 @@ from itertools import product
 # triqs
 from h5 import HDFArchive
 import triqs.utility.mpi as mpi
+from triqs.gf import make_gf_imfreq
 from triqs.operators import util, n, c, c_dag, Operator
 from solid_dmft.dmft_tools import solver
+
+
 try:
     import forktps as ftps
 except ImportError:
     pass
 
-def _load_crpa_interaction_matrix(sum_k, filename='UIJKL'):
+def _load_crpa_interaction_matrix(sum_k, general_params, gw_params, filename='UIJKL'):
     """
-    Loads VASP cRPA data to use as an interaction Hamiltonian.
+    Loads  dynamic interaction data to use as an interaction Hamiltonian.
     """
     def _round_to_int(data):
         return (np.array(data) + .5).astype(int)
 
+    if gw_params['code'] == 'Vasp':
     # Loads data from VASP cRPA file
-    print('Loading cRPA matrix from file: '+str(filename))
-    data = np.loadtxt(filename, unpack=True)
-    u_matrix_four_indices = np.zeros(_round_to_int(np.max(data[:4], axis=1)), dtype=complex)
-    for entry in data.T:
-        # VASP switches the order of the indices, ijkl -> ikjl
-        i, k, j, l = _round_to_int(entry[:4])-1
-        u_matrix_four_indices[i, j, k, l] = entry[4] + 1j * entry[5]
+        print('Loading Vasp cRPA matrix from file: '+str(filename))
+        data = np.loadtxt(filename, unpack=True)
+        u_matrix_four_indices = np.zeros(_round_to_int(np.max(data[:4], axis=1)), dtype=complex)
+        for entry in data.T:
+            # VASP switches the order of the indices, ijkl -> ikjl
+            i, k, j, l = _round_to_int(entry[:4])-1
+            u_matrix_four_indices[i, j, k, l] = entry[4] + 1j * entry[5]
 
-    # Slices up the four index U-matrix, separating shells
-    u_matrix_four_indices_per_shell = [None] * sum_k.n_inequiv_shells
-    first_index_shell = 0
-    for ish in range(sum_k.n_corr_shells):
-        icrsh = sum_k.corr_to_inequiv[ish]
-        n_orb = solver.get_n_orbitals(sum_k)[icrsh]['up']
-        u_matrix_temp = u_matrix_four_indices[first_index_shell:first_index_shell+n_orb,
-                                              first_index_shell:first_index_shell+n_orb,
-                                              first_index_shell:first_index_shell+n_orb,
-                                              first_index_shell:first_index_shell+n_orb]
-        # I think for now we should stick with real interactions make real
-        u_matrix_temp.imag = 0.0
+        # Slices up the four index U-matrix, separating shells
+        u_matrix_four_indices_per_shell = [None] * sum_k.n_inequiv_shells
+        first_index_shell = 0
+        for ish in range(sum_k.n_corr_shells):
+            icrsh = sum_k.corr_to_inequiv[ish]
+            n_orb = solver.get_n_orbitals(sum_k)[icrsh]['up']
+            u_matrix_temp = u_matrix_four_indices[first_index_shell:first_index_shell+n_orb,
+                                                  first_index_shell:first_index_shell+n_orb,
+                                                  first_index_shell:first_index_shell+n_orb,
+                                                  first_index_shell:first_index_shell+n_orb]
+            # I think for now we should stick with real interactions make real
+            u_matrix_temp.imag = 0.0
 
-        if ish == icrsh:
-            u_matrix_four_indices_per_shell[icrsh] = u_matrix_temp
-        elif not np.allclose(u_matrix_four_indices_per_shell[icrsh], u_matrix_temp, atol=1e-6, rtol=0):
-            # TODO: for some reason, some entries in the matrices differ by a sign. Check that
-            # mpi.report(np.allclose(np.abs(u_matrix_four_indices_per_shell[icrsh]), np.abs(u_matrix_temp),
-            # atol=1e-6, rtol=0))
-            mpi.report('Warning: cRPA matrix for impurity {} '.format(icrsh)
-                       + 'differs for shells {} and {}'.format(sum_k.inequiv_to_corr[icrsh], ish))
+            if ish == icrsh:
+                u_matrix_four_indices_per_shell[icrsh] = u_matrix_temp
+            elif not np.allclose(u_matrix_four_indices_per_shell[icrsh], u_matrix_temp, atol=1e-6, rtol=0):
+                # TODO: for some reason, some entries in the matrices differ by a sign. Check that
+                # mpi.report(np.allclose(np.abs(u_matrix_four_indices_per_shell[icrsh]), np.abs(u_matrix_temp),
+                # atol=1e-6, rtol=0))
+                mpi.report('Warning: cRPA matrix for impurity {} '.format(icrsh)
+                           + 'differs for shells {} and {}'.format(sum_k.inequiv_to_corr[icrsh], ish))
 
-        first_index_shell += n_orb
+            first_index_shell += n_orb
 
-    if not np.allclose(u_matrix_four_indices.shape, first_index_shell):
-        print('Warning: different number of orbitals in cRPA matrix than in calculation.')
+        if not np.allclose(u_matrix_four_indices.shape, first_index_shell):
+            print('Warning: different number of orbitals in cRPA matrix than in calculation.')
 
-    return u_matrix_four_indices_per_shell
+    elif gw_params['code'] == 'aimbes':
+        from solid_dmft.gw_embedding.bdft_converter import convert_gw_output
+        u_matrix_four_indices_per_shell = []
+        # lad GW input from h5 file
+        if mpi.is_master_node():
+            if 'Uloc_dlr' not in gw_params:
+                gw_data, ir_kernel = convert_gw_output(
+                    general_params['jobname'] + '/' + general_params['seedname'] + '.h5',
+                    gw_params['h5_file'],
+                    it_1e = gw_params['it_1e'],
+                    it_2e = gw_params['it_2e'],
+                    ha_ev_conv = True
+                )
+                gw_params.update(gw_data)
+            for icrsh in range(sum_k.n_inequiv_shells):
+                # for now we assume that up / down are equal
+                if general_params['h_int_type'][icrsh] in  ('crpa', 'crpa_density_density'):
+                    Uloc_0 = make_gf_imfreq(gw_params['Uloc_dlr'][icrsh]['up'],1)
+                    u_matrix_four_indices_per_shell.append(Uloc_0.data[0,:,:,:,:] + gw_params['Vloc'][icrsh]['up'])
+                else:
+                    u_matrix_four_indices_per_shell.append(gw_params['Vloc'][icrsh]['up'])
+
+                u_matrix_four_indices_per_shell[icrsh] = u_matrix_four_indices_per_shell[icrsh]
+        mpi.barrier()
+        u_matrix_four_indices_per_shell = mpi.bcast(u_matrix_four_indices_per_shell)
+        gw_params = mpi.bcast(gw_params)
+    else:
+        raise ValueError('Unknown code for reading cRPA results: {}'.format(gw_params['code']))
+
+    return u_matrix_four_indices_per_shell, gw_params
 
 
 # def _adapt_U_2index_for_SO(Umat, Upmat):
@@ -369,11 +402,11 @@ def _rotate_four_index_matrix(sum_k, general_params, Umat_full, icrsh):
     # Transposes rotation matrix here because TRIQS has a slightly different definition
     Umat_full_rotated = util.transform_U_matrix(Umat_full, sum_k.rot_mat[ish].T)
 
-    if general_params['h_int_type'][icrsh] in ('density_density', 'crpa_density_density'):
+    if general_params['h_int_type'][icrsh] in ('density_density', 'crpa_density_density', 'dyn_density_density'):
         if not np.allclose(Umat_full_rotated, Umat_full):
             mpi.report('WARNING: applying a rotation matrix changes the dens-dens Hamiltonian.\n'
                        + 'This changes the definition of the ignored spin flip and pair hopping.')
-    elif general_params['h_int_type'][icrsh] in ('full_slater', 'crpa'):
+    elif general_params['h_int_type'][icrsh] in ('full_slater', 'crpa', 'dyn_full'):
         if not np.allclose(Umat_full_rotated, Umat_full):
             mpi.report('WARNING: applying a rotation matrix changes the interaction Hamiltonian.\n'
                        + 'Please ensure that the rotation is correct!')
@@ -470,7 +503,7 @@ def h_int_simple_intra(spin_names,n_orb,U,off_diag=None,map_operator_structure=N
     return H
 
 
-def construct(sum_k, general_params, solver_type_per_imp):
+def construct(sum_k, general_params, solver_type_per_imp,  gw_params=None):
     """
     Constructs the interaction Hamiltonian. Currently implemented are the
     Kanamori Hamiltonian (usually for 2 or 3 orbitals), the density-density and
@@ -555,28 +588,25 @@ def construct(sum_k, general_params, solver_type_per_imp):
 
 
         # read from file options
-        if general_params['h_int_type'][icrsh] in ('crpa', 'crpa_density_density'):
-            Umat_full = _load_crpa_interaction_matrix(sum_k, icrsh)
+        if general_params['h_int_type'][icrsh] in ('crpa', 'crpa_density_density', 'dyn_density_density', 'dyn_full'):
+            Umat_full, gw_params = _load_crpa_interaction_matrix(sum_k, general_params, gw_params)
 
             if sum_k.SO == 1:
-                Umat_full = [_adapt_U_4index_for_SO(Umat_full_per_imp)
-                             for Umat_full_per_imp in Umat_full]
+                Umat_full[icrsh] = _adapt_U_4index_for_SO(Umat_full[icrsh])
 
             # Rotates the interaction matrix
-            Umat_full_rotated = _rotate_four_index_matrix(sum_k, general_params, Umat_full, icrsh)
+            if sum_k.use_rotations:
+                Umat_full[icrsh] = _rotate_four_index_matrix(sum_k, general_params, Umat_full[icrsh], icrsh)
+                Umat_full[icrsh][np.abs(Umat_full[icrsh]) < general_params['U_crpa_threshold']] = 0.0
 
+            gw_params['U_matrix_rot']= Umat_full
             # construct slater / density density from U tensor
-            if general_params['h_int_type'][icrsh] == 'crpa':
-                h_int[icrsh] = _construct_slater(sum_k, general_params, Umat_full_rotated, icrsh)
+            if general_params['h_int_type'][icrsh] in ('crpa', 'dyn_full'):
+                h_int[icrsh] = _construct_slater(sum_k, general_params, Umat_full[icrsh].real, icrsh)
             else:
-                h_int[icrsh] = _construct_density_density(sum_k, general_params, Umat_full_rotated, icrsh)
-            continue
-
-        # dynamic interaction from file
-        if general_params['h_int_type'][icrsh] == 'dynamic':
-            h_int[icrsh] = _construct_dynamic(sum_k, general_params, icrsh)
+                h_int[icrsh] = _construct_density_density(sum_k, general_params, Umat_full[icrsh].real, icrsh)
             continue
 
         raise NotImplementedError('Error when constructing the interaction Hamiltonian.')
 
-    return h_int
+    return h_int, gw_params

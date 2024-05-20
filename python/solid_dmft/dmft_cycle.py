@@ -27,7 +27,6 @@ main DMFT cycle, DMFT step, and helper functions
 
 
 # system
-import os
 from copy import deepcopy
 from timeit import default_timer as timer
 import numpy as np
@@ -38,9 +37,9 @@ from triqs.version import git_hash as triqs_hash
 from triqs.version import version as triqs_version
 from h5 import HDFArchive
 import triqs.utility.mpi as mpi
-from triqs.gf import Gf, make_hermitian, MeshReFreq, MeshImFreq
-from triqs.gf.tools import inverse
-from triqs_dft_tools import BlockStructure
+from triqs.operators import c_dag, c, Operator
+from triqs.gf import make_hermitian, fit_hermitian_tail, MeshReFreq, MeshImFreq, make_gf_from_fourier, iOmega_n
+from triqs.gf.tools import inverse, make_zero_tail
 from triqs_dft_tools.sumk_dft import SumkDFT
 
 # own modules
@@ -266,7 +265,7 @@ def _chi_setup(sum_k, solver_params, map_imp_solver):
 
 
 def dmft_cycle(general_params, solver_params, advanced_params, dft_params,
-               n_iter, dft_irred_kpt_indices=None, dft_energy=None):
+               gw_params, n_iter, dft_irred_kpt_indices=None, dft_energy=None):
     """
     main dmft cycle that works for one shot and CSC equally
 
@@ -278,8 +277,10 @@ def dmft_cycle(general_params, solver_params, advanced_params, dft_params,
         solver parameters as a dict
     advanced_params : dict
         advanced parameters as a dict
-    observables : dict
-        current observable array for calculation
+    dft_params : dict
+        dft parameters as a dict
+    gw_params : dict
+        gw parameters as a dict
     n_iter : int
         number of iterations to be executed
     dft_irred_kpt_indices: iterable of int
@@ -483,7 +484,7 @@ def dmft_cycle(general_params, solver_params, advanced_params, dft_params,
             general_params = afm_mapping.determine(general_params, archive, sum_k.n_inequiv_shells)
 
     # Constructs interaction Hamiltonian and writes it to the h5 archive
-    h_int = interaction_hamiltonian.construct(sum_k, general_params, solver_type_per_imp)
+    h_int, gw_params = interaction_hamiltonian.construct(sum_k, general_params, solver_type_per_imp, gw_params)
     if mpi.is_master_node():
         archive['DMFT_input']['h_int'] = h_int
 
@@ -506,7 +507,7 @@ def dmft_cycle(general_params, solver_params, advanced_params, dft_params,
     for icrsh in range(sum_k.n_inequiv_shells):
         # Construct the Solver instances
         solvers[icrsh] = SolverStructure(general_params, solver_params[map_imp_solver[icrsh]],
-                                         advanced_params, sum_k, icrsh, h_int[icrsh],
+                                         gw_params, advanced_params, sum_k, icrsh, h_int[icrsh],
                                          iteration_offset, deg_orbs_ftps)
 
     # store solver hash to archive
@@ -522,11 +523,10 @@ def dmft_cycle(general_params, solver_params, advanced_params, dft_params,
 
     # Extracts local GF per *inequivalent* shell
     local_gf_dft = sum_k.extract_G_loc(broadening=broadening, with_Sigma=False, mu=dft_mu)
-    density_mat_dft = [gf.density() for gf in local_gf_dft]
 
     # Determines initial Sigma and DC
-    sum_k, solvers = initial_sigma.determine_dc_and_initial_sigma(general_params, advanced_params, sum_k,
-                                                                  archive, iteration_offset, density_mat_dft, solvers,
+    sum_k, solvers = initial_sigma.determine_dc_and_initial_sigma(general_params, gw_params, advanced_params, sum_k,
+                                                                  archive, iteration_offset, local_gf_dft, solvers,
                                                                   solver_type_per_imp)
 
     sum_k = manipulate_mu.set_initial_mu(general_params, sum_k, iteration_offset, archive, broadening)
@@ -549,7 +549,7 @@ def dmft_cycle(general_params, solver_params, advanced_params, dft_params,
     if mpi.is_master_node() and iteration_offset == 0:
         write_header_to_file(general_params, sum_k)
         observables = add_dft_values_as_zeroth_iteration(observables, general_params, solver_type_per_imp, dft_mu, dft_energy, sum_k,
-                                                         local_gf_dft, density_mat_dft, shell_multiplicity)
+                                                         local_gf_dft, shell_multiplicity)
         write_obs(observables, sum_k, general_params)
         # write convergence file
         convergence.prep_conv_file(general_params, sum_k)
@@ -669,14 +669,57 @@ def _dmft_step(sum_k, solvers, it, general_params,
             solvers[icrsh].G0_freq << make_hermitian(solvers[icrsh].G0_freq)
         sum_k.symm_deg_gf(solvers[icrsh].G0_freq, ish=icrsh)
 
+        if ((solver_type_per_imp[icrsh] == 'cthyb' and solver_params[icrsh]['delta_interface'])
+                or solver_type_per_imp[icrsh] == 'ctseg'):
+            mpi.report('\n Using the delta interface for passing Delta(tau) and Hloc0 directly to the solver.')
+             # prepare solver input
+            sumk_eal = sum_k.eff_atomic_levels()[icrsh]
+            solver_eal = sum_k.block_structure.convert_matrix(sumk_eal, space_from='sumk', ish_from=sum_k.inequiv_to_corr[icrsh])
+            # fill Delta_time from Delta_freq sum_k to solver
+            # for name, g0 in self.G0_freq:
+            for name, g0 in solvers[icrsh].G0_freq:
+                solvers[icrsh].Delta_freq[name] << iOmega_n - inverse(g0) - solver_eal[name]
+                known_moments = make_zero_tail(solvers[icrsh].Delta_freq[name], 1)
+                tail, err = fit_hermitian_tail(solvers[icrsh].Delta_freq[name], known_moments)
+                # without SOC delta_tau needs to be real
+                if not sum_k.SO == 1:
+                    solvers[icrsh].Delta_time[name] << make_gf_from_fourier(solvers[icrsh].Delta_freq[name],
+                                                                            solvers[icrsh].Delta_time.mesh, tail).real
+                else:
+                    solvers[icrsh].Delta_time[name] << make_gf_from_fourier(solvers[icrsh].Delta_freq[name],
+                                                                           solvers[icrsh].Delta_time.mesh, tail)
+
+                if solver_params[icrsh]['diag_delta']:
+                    for o1 in range(g0.target_shape[0]):
+                        for o2 in range(g0.target_shape[0]):
+                            if o1 != o2:
+                                solvers[icrsh].Delta_time[name].data[:, o1, o2] = 0.0 + 0.0j
+
+                # Make non-interacting operator for Hloc0
+                Hloc_0 = Operator()
+                for spin, spin_block in solver_eal.items():
+                    for o1 in range(spin_block.shape[0]):
+                        for o2 in range(spin_block.shape[1]):
+                            # check if off-diag element is larger than threshold
+                            if o1 != o2 and abs(spin_block[o1,o2]) < solver_params[icrsh]['off_diag_threshold']:
+                                continue
+                            else:
+                                # TODO: adapt for SOC calculations, which should keep the imag part
+                                Hloc_0 += spin_block[o1,o2].real/2 * (c_dag(spin,o1) * c(spin,o2) + c_dag(spin,o2) * c(spin,o1))
+                solvers[icrsh].Hloc_0 = Hloc_0
+
          # store solver to h5 archive
         if general_params['store_solver'] and mpi.is_master_node():
+            if 'solver' not in archive['DMFT_input']:
+                archive['DMFT_input'].create_group('solver')
             archive['DMFT_input/solver'].create_group('it_'+str(it))
             archive['DMFT_input/solver/it_'+str(it)]['S_'+str(icrsh)] = solvers[icrsh].triqs_solver
 
         # store DMFT input directly in last_iter
         if mpi.is_master_node():
             archive['DMFT_results/last_iter']['G0_freq_{}'.format(icrsh)] = solvers[icrsh].G0_freq
+            if solver_type_per_imp[icrsh] == 'cthyb' and solver_params[icrsh]['delta_interface']:
+                archive['DMFT_results/last_iter']['Delta_time_{}'.format(icrsh)] = solvers[icrsh].Delta_time
 
         # setup of measurement of chi(SzSz(tau) if requested
         # TODO: move this into solver class?
@@ -730,6 +773,9 @@ def _dmft_step(sum_k, solvers, it, general_params,
         if solver_type_per_imp[iineq] == 'hartree':
             sum_k.dc_energ[icrsh] = solvers[iineq].DC_energy
 
+    # symmetrize Sigma over degenerate blocks
+    for icrsh in range(sum_k.n_inequiv_shells):
+        sum_k.symm_deg_gf(solvers[icrsh].Sigma_freq, ish=icrsh)
     # doing the dmft loop and set new sigma into sumk
     sum_k.put_Sigma([solvers[icrsh].Sigma_freq for icrsh in range(sum_k.n_inequiv_shells)])
 

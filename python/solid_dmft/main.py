@@ -86,12 +86,22 @@ def run_dmft(params, config_file_name=None):
     general_params = full_params['general']
     solver_params = full_params['solver']
     dft_params = full_params['dft']
+    gw_params = full_params['gw']
     advanced_params = full_params['advanced']
 
     if general_params['csc']:
         # Start CSC calculation, always in same folder as dmft_config
         general_params['jobname'] = '.'
         csc_flow_control(general_params, solver_params, dft_params, advanced_params)
+    elif general_params['gw_embedding']:
+        from solid_dmft.gw_embedding.gw_flow import embedding_driver
+        if mpi.is_master_node():
+            # Creates output directory if it does not exist
+            if not os.path.exists(general_params['jobname']):
+                os.makedirs(general_params['jobname'])
+        mpi.barrier()
+        # run GW embedding
+        embedding_driver(general_params, solver_params, gw_params, advanced_params)
     else:
         # Sets up one-shot calculation
         mpi.report('', '#'*80)
@@ -119,7 +129,7 @@ def run_dmft(params, config_file_name=None):
 
         # Runs dmft_cycle
         dmft_cycle(general_params, solver_params, advanced_params,
-                   dft_params, general_params['n_iter_dmft'])
+                   dft_params, gw_params, general_params['n_iter_dmft'])
 
     mpi.barrier()
     if mpi.is_master_node():

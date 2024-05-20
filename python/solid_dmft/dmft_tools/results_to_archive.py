@@ -43,6 +43,9 @@ def _compile_information(sum_k, general_params, solver_params, solvers, map_imp_
     if dens is not None:
         write_to_h5['deltaN_trace'] = dens
 
+    if any(str(entry) in ('crpa_dynamic') for entry in general_params['dc_type']):
+        write_to_h5['DC_pot_dyn'] = sum_k.dc_imp_dyn
+
     for icrsh in range(sum_k.n_inequiv_shells):
         isolvsec = map_imp_solver[icrsh]
         if solver_type_per_imp[icrsh] in ['cthyb', 'hubbardI']:
@@ -52,6 +55,10 @@ def _compile_information(sum_k, general_params, solver_params, solvers, map_imp_
             if solver_params[isolvsec]['measure_density_matrix']:
                 write_to_h5['full_dens_mat_{}'.format(icrsh)] = solvers[icrsh].density_matrix
                 write_to_h5['h_loc_diag_{}'.format(icrsh)] = solvers[icrsh].h_loc_diagonalization
+                if solver_type_per_imp[icrsh] in ('cthyb','hubbardI'):
+                    write_to_h5['Sigma_moments_{}'.format(icrsh)] = solvers[icrsh].Sigma_moments
+                    write_to_h5['G_moments_{}'.format(icrsh)] = solvers[icrsh].G_moments
+                    write_to_h5['Sigma_Hartree_{}'.format(icrsh)] = solvers[icrsh].Sigma_Hartree
 
         elif solver_type_per_imp[icrsh] == 'ftps':
             write_to_h5['Delta_freq_{}'.format(icrsh)] = solvers[icrsh].Delta_freq
@@ -75,6 +82,10 @@ def _compile_information(sum_k, general_params, solver_params, solvers, map_imp_
                 write_to_h5['G_time_orig_{}'.format(icrsh)] = solvers[icrsh].G_time_orig
                 write_to_h5['Gimp_l_{}'.format(icrsh)] = solvers[icrsh].G_l
 
+            if solver_params[isolvsec]['crm_dyson_solver']:
+                write_to_h5['G_time_dlr_{}'.format(icrsh)] = solvers[icrsh].G_time_dlr
+                write_to_h5['Sigma_dlr_{}'.format(icrsh)] = solvers[icrsh].Sigma_dlr
+
         if solver_type_per_imp[icrsh] == 'ctint' and solver_params[isolvsec]['measure_histogram']:
             write_to_h5['pert_order_imp_{}'.format(icrsh)] = solvers[icrsh].perturbation_order
 
@@ -91,12 +102,18 @@ def _compile_information(sum_k, general_params, solver_params, solvers, map_imp_
 
         if solver_type_per_imp[icrsh] == 'ctseg':
             # if legendre was set, that we have both now!
-            if (solver_params[isolvsec]['measure_gl'] or solver_params[isolvsec]['legendre_fit']):
+            if (solver_params[isolvsec]['legendre_fit']):
                 write_to_h5['G_time_orig_{}'.format(icrsh)] = solvers[icrsh].G_time_orig
                 write_to_h5['Gimp_l_{}'.format(icrsh)] = solvers[icrsh].G_l
-            if solver_params[isolvsec]['measure_ft']:
+            if solver_params[isolvsec]['improved_estimator']:
                 write_to_h5['F_freq_{}'.format(icrsh)] = solvers[icrsh].F_freq
                 write_to_h5['F_time_{}'.format(icrsh)] = solvers[icrsh].F_time
+            if solver_params[isolvsec]['crm_dyson_solver']:
+                write_to_h5['G_time_dlr_{}'.format(icrsh)] = solvers[icrsh].G_time_dlr
+                write_to_h5['Sigma_dlr_{}'.format(icrsh)] = solvers[icrsh].Sigma_dlr
+            if general_params['h_int_type'][icrsh] == 'dyn_density_density':
+                write_to_h5['D0_time_{}'.format(icrsh)] = solvers[icrsh].triqs_solver.D0_tau
+                write_to_h5['Jperp_time_{}'.format(icrsh)] = solvers[icrsh].triqs_solver.Jperp_tau
 
     return write_to_h5
 

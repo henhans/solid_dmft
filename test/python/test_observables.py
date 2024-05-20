@@ -59,14 +59,13 @@ class test_observables(unittest.TestCase):
         G_loc_all_dft = [BlockGf(name_list=('up_0', 'down_0'), block_list=(gf_up, gf_down), make_copies=True)]
 
         solver_type_per_imp = ['cthyb']
-        density_mat_dft = [G_loc_all_dft[iineq].density() for iineq in range(sum_k.n_inequiv_shells)]
         dft_mu = 12.
         shell_multiplicity = [4]
 
         observables = set_up_observables(sum_k.n_inequiv_shells)
 
         observables = add_dft_values_as_zeroth_iteration(observables, general_params, solver_type_per_imp, dft_mu, None, sum_k,
-                                                         G_loc_all_dft, density_mat_dft, shell_multiplicity)
+                                                         G_loc_all_dft, shell_multiplicity)
 
         expected_observables = {'E_bandcorr': ['none'], 'E_tot': ['none'], 'E_dft': ['none'],
                                 'E_DC': [['none']], 'E_int': [['none']],
@@ -116,7 +115,6 @@ class test_observables(unittest.TestCase):
                          BlockGf(name_list=('up_0', 'down_0'), block_list=(gf_up_two_bands, gf_down_two_bands), make_copies=True)]
 
         solver_type_per_imp = ['cthyb', 'cthyb']
-        density_mat_dft = [G_loc_all_dft[iineq].density() for iineq in range(sum_k.n_inequiv_shells)]
         dft_mu = 2.
         dft_energy = None
         shell_multiplicity = [3, 1]
@@ -124,7 +122,7 @@ class test_observables(unittest.TestCase):
         observables = set_up_observables(sum_k.n_inequiv_shells)
 
         observables = add_dft_values_as_zeroth_iteration(observables, general_params, solver_type_per_imp, dft_mu, dft_energy, sum_k,
-                                                         G_loc_all_dft, density_mat_dft, shell_multiplicity)
+                                                         G_loc_all_dft, shell_multiplicity)
         expected_observables = {'E_bandcorr': [0.0], 'E_tot': [-5.3], 'E_dft': [0.0],
                                 'E_DC': [[0.3], [5.0]], 'E_int': [[0.0], [0.0]],
                                 'orb_occ': [{'down': [[1., 1.]], 'up': [[0.8044, 0.8044]]}, {'down': [[0.5, 0.5]], 'up': [[0.5, 0.5]]}],

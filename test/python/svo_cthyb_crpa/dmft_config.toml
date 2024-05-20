@@ -1,0 +1,39 @@
+[general]
+seedname = "inp"
+jobname = "out"
+mu_initial_guess = 13.201
+
+enforce_off_diag = false
+
+prec_mu = 0.001
+n_iw = 100
+
+h_int_type = "crpa"
+U_crpa_threshold = 1e-1
+
+beta = 11.024796652696498
+
+n_iter_dmft = 1
+
+dc_type = "crpa_static"
+dc = true
+
+store_solver = true
+h5_save_freq = 1
+
+[solver]
+type = "cthyb"
+length_cycle = 50
+n_warmup_cycles = 1e+4
+n_cycles_tot = 1e+5
+imag_threshold = 1e-4
+delta_interface = true
+measure_density_matrix = true
+perform_tail_fit = true
+fit_max_moment = 4
+fit_min_w = 4
+fit_max_w = 10
+
+[gw]
+code = "aimbes"
+h5_file =  "../svo_gw_emb_stat/inp.h5"
