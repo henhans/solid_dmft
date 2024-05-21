@@ -2,6 +2,100 @@
 
 # Changelog
 
+## Version 3.3.0
+
+solid_dmft 3.3.0 is a major release, compatible with TRIQS 3.3, updated to the latest app4triqs skeleton, and bringing major changes to the code:
+
+* the input parser is switched to a general toml parser, i.e. strings have to be passed in quotes, boolean parameters given without capitalization, and lists passed with brackets. Check below separate section for detailed changes.
+* the new input parser allows to define for each impurity problem a different solver if wanted, i.e. d-shell with cthyb and p-shell with Hartree-Fock. See new text NiO-cthyb
+* docker images are automatically build on each push for all major releases to ghcr.io
+* switch from old ctseg to new ctseg_j solver
+* allow CRM Dyson solver for both cthyb and ctseg to obtain Sigma_imp
+  from G_tau:   "crm_dyson_solver=true" and dlr_wmax and dlr_eps (see https://triqs.github.io/triqs/unstable/documentation/python_api/triqs.gf.dlr_crm_dyson_solver.html#module-triqs.gf.dlr_crm_dyson_solver for details)
+* add new DC schemes 'crpa_static', 'crpa_static_qp', 'crpa_dynamic'
+* use cRPA calculated Uijkl as interaction via 'crpa',
+  'crpa_density_density', 'dyn_density_density', 'dyn_full' hint types
+* read interaction tensor from AIMBES h5
+* new experimental gw_embedding module. See gw_embedding/gw_flow.py for details allowing to run solid_dmft on top of AIMBES
+* allow to use Pade for AC in post-processing
+
+We thank all contributors: Sophie Beck, Thomas Hahn, Alexander Hampel, Henri Menke, Maximilian Merkel, and Nils Wentzell
+
+Find below an itemized list of changes in this release.
+
+### General
+* merge dev GW embedding (includes other fixes as well) (#78)
+* pass gw params to all methods
+* multiple solvers and toml input parser (#74)
+* added toml to docker images
+* Restore Python 3.8 compatibility for dictionary merge (#63)
+* Allow mathematical expression to be passed for random_seed (#61)
+* allow PCB to read from TRIQS TB object
+* respack fit slater for p shell
+* add Pade Sigma analytic continuation and refine tests
+* add simple_intra interaction, for intro orbital only interaction
+* add dc_orb_shift param to allow orbital dependent shift in impurity levels
+* allow 0.0 mixing to perform stat sampling
+* switch all pytest to unit tests
+
+### new toml input parser
+* The following input parameters can now be a list per impurity:
+    * `general_params`: U, J, U_prime, ratio_F4_F2, h_int_type, enforce_off_diag, dc_type
+    * `advanced_params`: dc_U, dc_J, dc_fixed_occ, map_solver_struct, pick_solver_struct, mapped_solver_struct_degeneracies
+* Multiple solvers can be used, which only solve the impurity problems specified in `idx_impurities`
+    * general parameter `solver_type` moved to solver section and renamed to `type`
+    * general parameter `n_l` moved to solver section
+    * general parameter `measure_chi` moved to solver section
+    * general parameter `delta_interface` moved to solver section
+* All possible input parameters are defined in the `python/solid_dmft/io_tools/default.toml`
+* according to toml format the config file is now called .toml (instead of .ini), and boolean are not capitalized, strings are given with quotes and lists are given with brackets.
+* Documentation of the input is now generated from `python/solid_dmft/io_tools/documentation.txt`
+* For an example, refer to the new integration test (see below)
+* Updated interface to python scripts wrapping solid_dmft: new routine `main.run_dmft` that expects the params as python dictionaries, which are then supplemented with the defaults etc equivalent to what happens when reading in a toml file
+
+* the existence of the parameter `general_params['beta']` now determines if a imaginary- or real-frequency grid is used within solid_dmft
+* Bug fix: Slater interaction for p orbitals can now be constructed
+* Renaming of solver parameters for the different solvers is now moved to `solver.py`. The idea is that every other part of solid_dmft should care as little as possible what solvers are used, with the details abstracted by the SolverStructure class
+    * In `solver.py`, all solver parameters that are passed to the triqs solver are transferred to a dict `triqs_solver_params`. When adding new triqs solver parameter to solid_dmft in the future, they also need to be added within solver.py.
+* In the determination of the block structure, the largely unused parameter `general_params['block_suppress_orbital_symm']` removed. Its behavior can be replaced by using `advanced_params['mapped_solver_struct_degeneracies']`
+* Integration tests: previously existing tests updated, new tests added. One with ftps solver (requires installation of ftps, otherwise just passes without doing anything) and one with a combination of CT-HYB and Hartree solver
+* Unit tests: added test for toml-related functionality
+* `read_config.py` removed and the functionality for dealing with the dicts from reading a toml file moved to `postproc_toml_dict.py`
+* `io_tools/verify_input_params.py` contains all checks of the input params that the code performs before starting the DMFT calculations
+* Updated the documentation of the input parameters
+
+### doc
+* add comment that proj in postprocessing is only correct for diag A(k,w)
+* update NNO magnetic tutorial
+* fix Vasp CSC tutorial for PNO after CSC fixes
+
+### build
+* add new tests for CRM Dyson solver (requires triqs 3.3)
+* add new GW embedding tests that run optionally with -DTest_GW_embedding=ON
+* modify basic SVO test to do crm test instead of gl
+* add useful apt packages to openmpi image
+* use ghcr.io images when testing PR
+* ci: build and cache base image separately (#70)
+* use new auto build ghcr.io docker images
+* add GitHub Actions workflow for Docker images (#66)
+* simplify dockerfile for github ci
+* trigger pypi build on tags
+* add pypi workflow
+* update Vasp patches for ver 6.4
+* Cleaned up VASP diff files for CSC
+* use cmake variable to determine max number of mpi ranks during testing
+
+### other fixes
+* Added warning for matrix-valued selfenergy continuation
+* draw colorbar only once in kslices
+* PCB bug aprx Sigma as diagonal if interpolation is used
+* broken FS: np.shape -> len
+* fix small FTPS problems and introduce a different eta for FTPS
+* maxent test precision fix and test dependency
+* use of origin in Fermi surface
+* fix calculation of Akw for off-diag Sigma
+
+
 ## Version 3.2.3
 solid_dmft version 3.2.3 and 3.2.2 are minor releases that fixes bugs in the post-processing routines and brings small new improvements:
 
