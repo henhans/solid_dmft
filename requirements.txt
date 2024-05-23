@@ -1,7 +1,6 @@
 # Required python packages for this application
 numpy
 scipy
-argparse
 scikit-image
 numpydoc
 # From python 3.11 and newer, toml is part of standard implementation

@@ -47,6 +47,26 @@ from solid_dmft.gw_embedding.iaft import IAFT
 HARTREE_EV = physical_constants['Hartree energy in eV'][0]
 
 def _get_dlr_from_IR(Gf_ir, ir_kernel, mesh_dlr_iw, dim=2):
+    r"""
+    Interpolate a given Gf from IR mesh to DLR mesh
+
+    Parameters
+    ----------
+    Gf_ir : np.ndarray
+        Green's function on IR mesh
+    ir_kernel : sparse_ir
+        IR kernel object
+    mesh_dlr_iw : MeshDLRImFreq
+        DLR mesh
+    dim : int, optional
+        dimension of the Green's function, defaults to 2
+
+    Returns
+    -------
+    Gf_dlr : BlockGf or Gf
+        Green's function on DLR mesh
+    """
+
     n_orb = Gf_ir.shape[-1]
     stats = 'f' if mesh_dlr_iw.statistic == 'Fermion' else 'b'
 
@@ -71,6 +91,30 @@ def _get_dlr_from_IR(Gf_ir, ir_kernel, mesh_dlr_iw, dim=2):
 
 
 def calc_Sigma_DC_gw(Wloc_dlr, Gloc_dlr, Vloc, verbose=False):
+    r"""
+    Calculate the double counting part of the self-energy from the screened Coulomb interaction
+
+    Parameters
+    ----------
+    Wloc_dlr : BlockGf or Gf with MeshDLR
+        screened Coulomb interaction
+    Gloc_dlr : BlockGf or Gf with MeshDLR
+        local Green's function
+    Vloc : np.ndarray
+        local Coulomb interaction
+    verbose : bool, optional
+        print additional information, defaults to False
+
+    Returns
+    -------
+    Sig_DC_dlr : BlockGf or Gf
+        double counting part of the self-energy
+    Sig_DC_hartree : np.ndarray
+        static Hartree part of the self-energy
+    Sig_DC_exchange : np.ndarray
+        static exchange part of the self-energy
+    """
+
     if isinstance(Gloc_dlr, BlockGf):
         Sig_DC_dlr_list = []
         Sig_DC_hartree_list = {}
@@ -129,7 +173,7 @@ def calc_Sigma_DC_gw(Wloc_dlr, Gloc_dlr, Vloc, verbose=False):
     return Sig_DC_dlr, Sig_DC_hartree, Sig_DC_exchange
 
 
-def calc_W_from_Gloc(Gloc_dlr: Gf | BlockGf, U: np.ndarray | dict) -> Gf | BlockGf:
+def calc_W_from_Gloc(Gloc_dlr, U):
     r"""
 
     Calculate Wijkl from given constant U tensor and Gf on DLRMesh

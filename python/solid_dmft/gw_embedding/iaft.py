@@ -2,7 +2,7 @@ import numpy as np
 import sparse_ir
 
 """
-Fourier transform on the imaginary axis based on IR basis and the sparse sampling technique.  
+Fourier transform on the imaginary axis based on IR basis and the sparse sampling technique.
 """
 
 
@@ -97,7 +97,7 @@ class IAFT(object):
                "*******************************".format(self.prec, self.beta, self.lmbda, self.nt_f, self.nw_f,
                                                         self.nt_b, self.nw_b)
 
-    def wn_mesh(self, stats: str, ir_notation: bool = True):
+    def wn_mesh(self, stats, ir_notation= True):
         """
         Return Matsubara frequency indices.
         :param stats: str
@@ -117,7 +117,7 @@ class IAFT(object):
             wn_mesh = (wn_mesh-1)//2 if stats == 'f' else wn_mesh//2
         return wn_mesh
 
-    def tau_to_w(self, Ot, stats: str):
+    def tau_to_w(self, Ot, stats):
         """
         Fourier transform from imaginary-time axis to Matsubara-frequency axis
         :param Ot: numpy.ndarray
@@ -172,7 +172,7 @@ class IAFT(object):
         Ot = Ot.reshape((Ttw.shape[0],) + Ow_shape[1:])
         return Ot
 
-    def w_interpolate(self, Ow, wn_mesh_interp, stats: str, ir_notation: bool = True):
+    def w_interpolate(self, Ow, wn_mesh_interp, stats, ir_notation=True):
         """
         Interpolate a dynamic object to arbitrary points on the Matsubara axis.
 
@@ -213,7 +213,7 @@ class IAFT(object):
         Ow_interp = Ow_interp.reshape((wn_indices.shape[0],) + Ow_shape[1:])
         return Ow_interp
 
-    def tau_interpolate(self, Ot, tau_mesh_interp, stats: str):
+    def tau_interpolate(self, Ot, tau_mesh_interp, stats):
         """
          Interpolate a dynamic object to arbitrary points on the imaginary-time axis.
 

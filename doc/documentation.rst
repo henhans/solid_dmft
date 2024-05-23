@@ -57,6 +57,7 @@ Module reference manual
     dft_managers
     dmft_cycle
     dmft_tools
+    gw_embedding
     io_tools
     postprocessing
     util

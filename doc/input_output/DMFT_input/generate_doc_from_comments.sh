@@ -38,6 +38,7 @@ The aim of this section is to provide a comprehensive listing of all the input f
     general
     solver
     dft
+    gw
     advanced
 
 Below an exhaustive list containing all the parameters marked by section.
@@ -65,6 +66,8 @@ awk '/\[  solver  \]/{flag=1; c=0} flag; /\[ /&& ++c==2{flag=0}' matches_comment
 grep '::' solver.tmp | grep -o ':: \(.*\)' | sed 's/:: //g' | tr ' \n' '; ' > solver_list.tmp
 awk '/\[  dft  \]/{flag=1; c=0} flag; /\[ /&& ++c==2{flag=0}' matches_comments.txt | head -n -2 | tail -n +3 > dft.tmp
 grep '::' dft.tmp | grep -o ':: \(.*\)' | sed 's/:: //g' | tr ' \n' '; ' > dft_list.tmp
+awk '/\[  gw  \]/{flag=1; c=0} flag; /\[ /&& ++c==2{flag=0}' matches_comments.txt | head -n -2 | tail -n +3 > gw.tmp
+grep '::' gw.tmp | grep -o ':: \(.*\)' | sed 's/:: //g' | tr ' \n' '; ' > gw_list.tmp
 awk '/\[  advanced  \]/{flag=1; c=0} flag; /\[ /&& ++c==2{flag=0}' matches_comments.txt | head -n -2 | tail -n +3 > advanced.tmp
 grep '::' advanced.tmp | grep -o ':: \(.*\)' | sed 's/:: //g' | tr ' \n' '; ' > advanced_list.tmp
 
@@ -80,6 +83,11 @@ echo -e "\n"  >> input.rst
 printf '**[dft]**' >> input.rst
 echo -e "\n"  >> input.rst
 cat dft_list.tmp >> input.rst
+
+echo -e "\n"  >> input.rst
+printf '**[gw]**' >> input.rst
+echo -e "\n"  >> input.rst
+cat gw_list.tmp >> input.rst
 
 echo -e "\n"  >> input.rst
 printf '**[advanced]**' >> input.rst
@@ -139,6 +147,22 @@ echo -e "\n"  >> dft.rst
 cat dft.tmp >> dft.rst
 ##############
 
+###############
+cat > gw.rst << EOF
+
+[GW]: GW embedding inputs
+-------------------------
+
+List of parameters for the GW embedding calculation. The parameters are ignored unless gw_embedding=true, or interactions are read from cRPA.
+
+
+EOF
+
+#cat gw_list.tmp >> gw.rst
+echo -e "\n"  >> gw.rst
+cat gw.tmp >> gw.rst
+##############
+#
 ##############
 cat > advanced.rst << EOF
 [advanced]: Advanced inputs
