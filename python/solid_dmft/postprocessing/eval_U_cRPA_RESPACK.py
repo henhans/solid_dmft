@@ -191,12 +191,14 @@ def construct_Uijkl(Uijij, Uiijj):
     construct full 4 index Uijkl tensor from respack data
     assuming Uijji = Uiijj
 
-    ----------
+    Parameters:
+    -----------
     Uijij: np.ndarray
         Uijij matrix
     Uiijj: np.ndarray
         Uiijj matrix
 
+    Returns:
     -------
     uijkl : numpy array
         uijkl Coulomb tensor
@@ -236,6 +238,7 @@ def fit_slater(u_ijij_crpa, u_ijji_crpa, U_init, J_init, fixed_F4_F2=True):
         inital value of J for optimization
     fixed_F4_F2: bool, optional default=True
         fix F4/F2 ratio to 0.625
+
     Returns:
     --------
     U_int: float

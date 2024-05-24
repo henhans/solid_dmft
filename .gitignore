@@ -13,6 +13,7 @@ POTCAR
 vasp*.tgz
 
 doc/input_output/DMFT_input/advanced.rst
+doc/input_output/DMFT_input/gw.rst
 doc/input_output/DMFT_input/dft.rst
 doc/input_output/DMFT_input/general.rst
 doc/input_output/DMFT_input/input.rst

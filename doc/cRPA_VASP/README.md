@@ -70,9 +70,6 @@ ulimit -s unlimited
 and is written in the OUTCAR as two sets of bare interaction, where for one of them
 it says: low cutoff result for V_ijkl. Here ENCUT was used and for the one above 1.1*ENCUT or VCUTOFF was used.
 * usually a converged ENCUT gives also a reasonably high VCUTOFF, so that explicitly setting VCUTOFF is not necessary. Moreover, the effect of the VCUTOFF convergence is included by subtracting the constant shift between LOW and HIGH VCUTOFF test output in the OUTCAR
-* One can see in the convergence plot "debugging_examples/LaTiO3/VCUTOFF_convergence.png" the effect of ENCUT and VCUTOFF:
-
-![vcutoff_test](VCUTOFF_convergence.png)
 
 ## convergency tests:
 $`E_{corr}^{RPA}`$  converges for NBANDS,ENCUT to $`\infty`$, where the asymptotic
@@ -90,10 +87,10 @@ The procedure is then to first convergence KPOINTS and ENCUT, where KPOINTS depe
 
 ## Parameterization of U and J from cRPA calculations
 `eval_u.py` provides four different methods:
-- Kanamori: `calc_kan_params(...)` for extracting Kanamori parameters for a cubic system 
+- Kanamori: `calc_kan_params(...)` for extracting Kanamori parameters for a cubic system
 - Slater 1: `calc_u_avg_fulld(...)` using averaging and symmetries: $`U_\mathrm{cubic} = \frac1{2l+1} \sum_i (U_{iiii})`$, $`J_\mathrm{cubic} = \frac1{2l(2l+1)} \sum_{i, j\neq i} U_{ijji}`$. Then, the interaction parameters follow from the conversion $`U = U_\mathrm{cubic} - \frac85 J_\mathrm{cubic}, J = \frac75 J_\mathrm{cubic}`$.
 - Slater 2: `calculate_interaction_from_averaging(...)` using direct averaging: $`U = \frac1{(2l+1)^2} \sum_{i, j} U_{iijj}`$ and $`J = U - \frac1{2l(2l+1)} \sum_{i, j} U_{ijij}`$. This is more straight forward that Slater 1, but ignores the basis in which the cRPA Uijkl matrix is written. For a perfect Slater matrix this gives the same results if applied in cubic or spherical harmonics basis.
-- Slater 3: `fit_slater_fulld(...) `using an least-square fit (summed over the matrix elements) of the two-index matrices $`U_{iijj}`$ and $`U_{ijij}`$ to the Slater Hamiltonian. 
+- Slater 3: `fit_slater_fulld(...) `using an least-square fit (summed over the matrix elements) of the two-index matrices $`U_{iijj}`$ and $`U_{ijij}`$ to the Slater Hamiltonian.
 
 These three methods give the same results if the cRPA matrix is of the Slater type already. Be aware of the order of your basis functions and the basis in which the $U$ tensor is written!
 

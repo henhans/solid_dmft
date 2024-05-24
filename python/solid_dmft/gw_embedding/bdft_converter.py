@@ -175,16 +175,14 @@ def calc_Sigma_DC_gw(Wloc_dlr, Gloc_dlr, Vloc, verbose=False):
 
 def calc_W_from_Gloc(Gloc_dlr, U):
     r"""
-
     Calculate Wijkl from given constant U tensor and Gf on DLRMesh
+    triqs notation for Uijkl:
 
-
-    triqs notation for Uijkl = phi*_i(r) phi*_j(r') U(r,r') phi_l'(r') phi_k(r)
-                            = Uijkl c^+_i c^+_j' c_l' c_k
+    phi*_i(r) phi*_j(r') U(r,r') phi_l'(r') phi_k(r) = Uijkl c^+_i c^+_j' c_l' c_k
 
     where the ' denotes a spin index different from the other without '
 
-    the according diagram is (left and right have same spin):
+    the according diagram is (left and right have same spin)::
 
        j (phi)         k' (phi)
          \              /
@@ -196,7 +194,7 @@ def calc_W_from_Gloc(Gloc_dlr, U):
        i (phi*)          l'
 
     we now have to move to a product basis form to combine two indices
-    i.e. go from nb,nb,nb,nb to nb**2,nb**2 tensors:
+    i.e. go from nb,nb,nb,nb to nb**2,nb**2 tensors::
 
         Uji,kl = phi*_i(r) phi_j(r) U(r,r') phi*_k(r') phi_l(r')
                = Psi*_ji(r) U(r,r') Psi_kl(r')
@@ -209,11 +207,12 @@ def calc_W_from_Gloc(Gloc_dlr, U):
 
     Pi_ab,kl(tau) = -2 G_bl(tau) G_ka(beta - tau)
 
-    So that
+    So that::
 
-    [ U Pi(iwn) ]_ji,kl = sum_ab U_ji,ab Pi_ab,kl(iwn)
+        [ U Pi(iwn) ]_ji,kl = sum_ab U_ji,ab Pi_ab,kl(iwn)
 
-    i.e.
+    i.e.::
+
        j'              a ___
          \              /   \ k
           <            <     \
@@ -223,9 +222,9 @@ def calc_W_from_Gloc(Gloc_dlr, U):
          /              \___/ l
        i'               b
 
-    then the screened Coulomb interaction in product basis is:
+    then the screened Coulomb interaction in product basis is::
 
-    W_ji,kl(iwn) = [1 - U Pi(iwn) ]^-1_ji,kl Uji,kl - Uji,kl
+        W_ji,kl(iwn) = [1 - U Pi(iwn) ]^-1_ji,kl Uji,kl - Uji,kl
 
     (subtract static shift here), and finally convert back to triqs notation.
 
@@ -233,8 +232,10 @@ def calc_W_from_Gloc(Gloc_dlr, U):
     Parameters
     ----------
     Gloc_dlr : BlockGf or Gf with MeshDLR
+        local Green's function
 
     U : np.ndarray of with shape [Gloc_dlr.target_shape]*4 or dict of np.ndarray
+        constant U tensor
 
     Returns
     -------

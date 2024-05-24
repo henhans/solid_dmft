@@ -100,6 +100,7 @@ class IAFT(object):
     def wn_mesh(self, stats, ir_notation= True):
         """
         Return Matsubara frequency indices.
+
         :param stats: str
             statistics: 'f' for fermions and 'b' for bosons
         :param ir_notation: bool
