@@ -12,7 +12,7 @@ env:
   OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
   OMPI_MCA_rmaps_base_oversubscribe: "yes"
 
-permissions: 
+permissions:
   contents: write
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
 
     runs-on: ubuntu-latest
-    container: 
+    container:
       image: ghcr.io/triqs/solid_dmft_github_ci:unstable
 
     steps:
@@ -30,7 +30,7 @@ jobs:
 
       - name: Build solid_dmft
         run: |
-          cmake -S . -B build/ -DBuild_Documentation=ON
+          cmake -S . -B build/ -DBuild_Documentation=ON -DTest_GW_embedding=ON
           cmake --build build/ --verbose
 
       - name: Test solid_dmft
