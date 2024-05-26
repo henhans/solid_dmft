@@ -224,6 +224,9 @@ RUN cd /source && git clone -b unstable --depth 1 https://github.com/TRIQS/hartr
     && cmake ../hartree_fock.src \
     && make -j$NCORES && ctest -j$NCORES && make install
 
+# install sparse-ir into triqs pythonpath
+pip install --target /triqs/lib/python3.10/site-packages sparse-ir[xprec]
+
 # download solid_dmft and install
 RUN cd /source && git clone -b unstable --depth 1 https://github.com/flatironinstitute/solid_dmft.git solid_dmft.src \
     && mkdir -p solid_dmft.build && cd solid_dmft.build \
