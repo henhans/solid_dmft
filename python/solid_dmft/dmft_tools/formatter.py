@@ -158,9 +158,10 @@ def print_summary_observables(observables, n_inequiv_shells, spin_block_names):
     for icrsh in range(n_inequiv_shells):
         total_occ = np.sum([observables['imp_occ'][icrsh][spin][-1] for spin in spin_block_names])
         print('total occupany of impurity {}: {:7.4f}'.format(icrsh, total_occ))
-    for icrsh in range(n_inequiv_shells):
-        total_gb2 = np.sum([observables['imp_gb2'][icrsh][spin][-1] for spin in spin_block_names])
-        print('G(beta/2) occ of impurity {}: {:8.4f}'.format(icrsh, total_gb2))
+    if "imp_gb2" in observables:
+        for icrsh in range(n_inequiv_shells):
+            total_gb2 = np.sum([observables['imp_gb2'][icrsh][spin][-1] for spin in spin_block_names])
+            print('G(beta/2) occ of impurity {}: {:8.4f}'.format(icrsh, total_gb2))
     for icrsh in range(n_inequiv_shells):
         print('Z (simple estimate) of impurity {} per orb:'.format(icrsh))
         for spin in spin_block_names:
