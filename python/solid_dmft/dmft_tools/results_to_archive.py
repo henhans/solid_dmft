@@ -100,8 +100,29 @@ def _compile_information(sum_k, general_params, solver_params, solvers,
 
     return write_to_h5
 
+def _compile_information_ghostGA(sum_k, general_params, solver_params, solvers,
+                                 previous_mu, density_mat_pre, density_mat, R, Lambda, deltaN, dens):
+    """ Collects all results in a dictonary. """
+
+    write_to_h5 = {'chemical_potential_post': sum_k.chemical_potential,
+                   'chemical_potential_pre': previous_mu,
+                   'DC_pot': sum_k.dc_imp,
+                   'DC_energ': sum_k.dc_energ,
+                   'dens_mat_pre': density_mat_pre,
+                   'dens_mat_post': density_mat,
+                   'R' : R,
+                   'Lambda' : Lambda,
+                  }
+
+    if deltaN is not None:
+        write_to_h5['deltaN'] = deltaN
+    if dens is not None:
+        write_to_h5['deltaN_trace'] = dens
+
+    return write_to_h5
+
 def write(archive, sum_k, general_params, solver_params, solvers, it, is_sampling,
-          previous_mu, density_mat_pre, density_mat, deltaN=None, dens=None):
+          previous_mu, density_mat_pre, density_mat, deltaN=None, dens=None, ghostGA=False, R=None, Lambda=None):
     """
     Collects and writes results to archive.
     """
@@ -109,8 +130,12 @@ def write(archive, sum_k, general_params, solver_params, solvers, it, is_samplin
     if not mpi.is_master_node():
         return
 
-    write_to_h5 = _compile_information(sum_k, general_params, solver_params, solvers,
-                                       previous_mu, density_mat_pre, density_mat, deltaN, dens)
+    if not ghostGA:
+        write_to_h5 = _compile_information(sum_k, general_params, solver_params, solvers,
+                                           previous_mu, density_mat_pre, density_mat, deltaN, dens)
+    else:
+        write_to_h5 = _compile_information_ghostGA(sum_k, general_params, solver_params, solvers,
+                                                   previous_mu, density_mat_pre, density_mat, R, Lambda, deltaN, dens)
 
     # Saves the results to last_iter
     archive['DMFT_results']['iteration_count'] = it
