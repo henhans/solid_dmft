@@ -434,7 +434,7 @@ def add_dmft_observables(observables, general_params, solver_params, dft_energy,
             for spin_channel in sorted(sum_k.gf_struct_solver[icrsh].keys()):
                 if not spin in spin_channel:
                     continue
-                if notghostGA:
+                if not ghostGA:
                     if general_params['solver_type'] in ['ftps']:
                         freq_mesh = np.array([w.value for w in solvers[icrsh].G_freq[spin_channel].mesh])
                         fermi_idx = abs(freq_mesh).argmin()
