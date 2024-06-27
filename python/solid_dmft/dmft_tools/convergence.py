@@ -32,7 +32,10 @@ import numpy as np
 from triqs.gf import MeshImFreq, MeshImTime, MeshReFreq, BlockGf
 from solid_dmft.dmft_tools import solver
 
-def _generate_header(general_params, sum_k):
+# TODO: Perhaps instead of passing a ghostGA flag, we can detect using the sum_k object
+# TODO: For ghostGA, also convergence should be made over Lambda, Delta, etc.
+
+def _generate_header(general_params, sum_k, ghostGA=False):
     """
     Generates the headers that are used in write_header_to_file.
     Returns a dict with {file_name: header_string}
@@ -46,10 +49,14 @@ def _generate_header(general_params, sum_k):
     headers = {}
     for iineq in range(sum_k.n_inequiv_shells):
         number_spaces = max(13*n_orb[iineq]['up']-1, 21)
-        header_basic_mask = '{{:>3}} | {{:>11}} | {{:>{0}}} | {{:>11}} | {{:>11}} | {{:>11}} | {{:>11}} '.format(number_spaces)
-
         file_name = 'conv_imp{}.dat'.format(iineq)
-        headers[file_name] = header_basic_mask.format('it', 'δμ','δocc orb','δimp occ','δGimp', 'δG0','δΣ')
+        if ghostGA:
+            header_basic_mask = '{{:>3}} | {{:>11}} | {{:>{0}}} | {{:>11}} '.format(number_spaces)
+            headers[file_name] = header_basic_mask.format('it', 'δμ','δocc orb','δimp occ')
+        else:
+            header_basic_mask = '{{:>3}} | {{:>11}} | {{:>{0}}} | {{:>11}} | {{:>11}} | {{:>11}} | {{:>11}} '.format(number_spaces)
+            headers[file_name] = header_basic_mask.format('it', 'δμ','δocc orb','δimp occ','δGimp', 'δG0','δΣ')
+
 
         if general_params['calc_energies']:
             headers[file_name] += header_energy
@@ -57,7 +64,7 @@ def _generate_header(general_params, sum_k):
 
     return headers
 
-def write_conv(conv_obs, sum_k, general_params):
+def write_conv(conv_obs, sum_k, general_params, ghostGA=False):
     """
     writes the last entries of the conv arrays to the files
 
@@ -69,6 +76,8 @@ def write_conv(conv_obs, sum_k, general_params):
     sum_k : SumK Object instances
 
     general_params : dict
+
+    ghostGA : bool
 
     __Returns:__
 
@@ -92,12 +101,13 @@ def write_conv(conv_obs, sum_k, general_params):
 
         # imp occupation change
         line += '{:10.5e} | '.format(conv_obs['d_imp_occ'][icrsh][-1])
-        # Gimp change
-        line += '{:10.5e} | '.format(conv_obs['d_Gimp'][icrsh][-1])
-        # G0 change
-        line += '{:10.5e} | '.format(conv_obs['d_G0'][icrsh][-1])
-        # Σ change
-        line += '{:10.5e}'.format(conv_obs['d_Sigma'][icrsh][-1])
+        if not ghostGA:
+            # Gimp change
+            line += '{:10.5e} | '.format(conv_obs['d_Gimp'][icrsh][-1])
+            # G0 change
+            line += '{:10.5e} | '.format(conv_obs['d_G0'][icrsh][-1])
+            # Σ change
+            line += '{:10.5e}'.format(conv_obs['d_Sigma'][icrsh][-1])
 
         if general_params['calc_energies']:
             line += ' | {:10.5e}'.format(conv_obs['d_Etot'][-1])
@@ -169,7 +179,7 @@ def max_G_diff(G1, G2, norm_temp = True):
 
     return norm
 
-def prep_conv_obs(h5_archive, sum_k):
+def prep_conv_obs(h5_archive, sum_k, ghostGA=False):
     """
     prepares the conv arrays and files for the DMFT calculation
 
@@ -178,6 +188,7 @@ def prep_conv_obs(h5_archive, sum_k):
     h5_archive: hdf archive instance
         hdf archive for calculation
     sum_k : SumK Object instances
+    ghostGA : bool
 
     __Returns:__
     conv_obs : dict
@@ -203,13 +214,14 @@ def prep_conv_obs(h5_archive, sum_k):
         conv_obs['d_orb_occ'] = [[] for i in range(n_inequiv_shells)]
         conv_obs['d_imp_occ'] = [[] for i in range(n_inequiv_shells)]
 
-        conv_obs['d_Gimp'] = [[] for i in range(n_inequiv_shells)]
-        conv_obs['d_G0'] = [[] for i in range(n_inequiv_shells)]
-        conv_obs['d_Sigma'] = [[] for i in range(n_inequiv_shells)]
+        if not ghostGA:
+            conv_obs['d_Gimp'] = [[] for i in range(n_inequiv_shells)]
+            conv_obs['d_G0'] = [[] for i in range(n_inequiv_shells)]
+            conv_obs['d_Sigma'] = [[] for i in range(n_inequiv_shells)]
 
     return conv_obs
 
-def prep_conv_file(general_params, sum_k):
+def prep_conv_file(general_params, sum_k, ghostGA=False):
     """
     Writes the header to the conv files
 
@@ -225,7 +237,7 @@ def prep_conv_file(general_params, sum_k):
     nothing
     """
 
-    headers = _generate_header(general_params, sum_k)
+    headers = _generate_header(general_params, sum_k, ghostGA=ghostGA)
 
     for file_name, header in headers.items():
         path = os.path.join(general_params['jobname'], file_name)
@@ -234,7 +246,7 @@ def prep_conv_file(general_params, sum_k):
 
 
 def calc_convergence_quantities(sum_k, general_params, conv_obs, observables,
-                                     solvers, G0_old, G_loc_all, Sigma_freq_previous):
+                                     solvers, G0_old=None, G_loc_all=None, Sigma_freq_previous=None, ghostGA=False):
     """
     Calculations convergence quantities, i.e. the difference in observables
     between the last and second to last iteration.
@@ -290,9 +302,10 @@ def calc_convergence_quantities(sum_k, general_params, conv_obs, observables,
             conv_obs['d_orb_occ'][icrsh].append(abs(observables['orb_occ'][icrsh]['ud'][-1]+
                                                     observables['imp_occ'][icrsh]['ud'][-2]))
 
-        conv_obs['d_Gimp'][icrsh].append(max_G_diff(solvers[icrsh].G_freq, G_loc_all[icrsh]))
-        conv_obs['d_G0'][icrsh].append(max_G_diff(solvers[icrsh].G0_freq, G0_old[icrsh]))
-        conv_obs['d_Sigma'][icrsh].append(max_G_diff(solvers[icrsh].Sigma_freq, Sigma_freq_previous[icrsh]))
+        if not ghostGA:
+            conv_obs['d_Gimp'][icrsh].append(max_G_diff(solvers[icrsh].G_freq, G_loc_all[icrsh]))
+            conv_obs['d_G0'][icrsh].append(max_G_diff(solvers[icrsh].G0_freq, G0_old[icrsh]))
+            conv_obs['d_Sigma'][icrsh].append(max_G_diff(solvers[icrsh].Sigma_freq, Sigma_freq_previous[icrsh]))
 
     if general_params['calc_energies']:
         conv_obs['d_Etot'].append(abs(observables['E_tot'][-1]-observables['E_tot'][-2]))
@@ -300,7 +313,7 @@ def calc_convergence_quantities(sum_k, general_params, conv_obs, observables,
     return conv_obs
 
 
-def check_convergence(n_inequiv_shells, general_params, conv_obs):
+def check_convergence(n_inequiv_shells, general_params, conv_obs, ghostGA=False):
     """
     check last iteration for convergence
 
@@ -324,9 +337,12 @@ def check_convergence(n_inequiv_shells, general_params, conv_obs):
     """
 
     # If no convergence criterion is set, convergence is undefined and returns None
-    if (general_params['occ_conv_crit'] <= 0.0 and general_params['gimp_conv_crit'] <= 0.0
-            and general_params['g0_conv_crit'] <= 0.0 and general_params['sigma_conv_crit'] <= 0.0):
-        return None
+    if (general_params['occ_conv_crit'] <= 0.0):
+        if ghostGA:
+            return None
+        elif (general_params['gimp_conv_crit'] <= 0.0
+              and general_params['g0_conv_crit'] <= 0.0 and general_params['sigma_conv_crit'] <= 0.0):
+            return None
 
     # Checks convergence criteria
     for icrsh in range(n_inequiv_shells):
@@ -335,19 +351,20 @@ def check_convergence(n_inequiv_shells, general_params, conv_obs):
                 and general_params['occ_conv_crit'] > 0.0):
             return False
 
-        # Checks Gimp
-        if (conv_obs['d_Gimp'][icrsh][-1] > general_params['gimp_conv_crit']
-                and general_params['gimp_conv_crit'] > 0.0):
-            return False
+        if not ghostGA:
+            # Checks Gimp
+            if (conv_obs['d_Gimp'][icrsh][-1] > general_params['gimp_conv_crit']
+                    and general_params['gimp_conv_crit'] > 0.0):
+                return False
 
-        # Checks G0
-        if (conv_obs['d_G0'][icrsh][-1] > general_params['g0_conv_crit']
-                and general_params['g0_conv_crit'] > 0.0):
-            return False
+            # Checks G0
+            if (conv_obs['d_G0'][icrsh][-1] > general_params['g0_conv_crit']
+                    and general_params['g0_conv_crit'] > 0.0):
+                return False
 
-        # Checks Sigma
-        if (conv_obs['d_Sigma'][icrsh][-1] > general_params['sigma_conv_crit']
-                and general_params['sigma_conv_crit'] > 0.0):
-            return False
+            # Checks Sigma
+            if (conv_obs['d_Sigma'][icrsh][-1] > general_params['sigma_conv_crit']
+                    and general_params['sigma_conv_crit'] > 0.0):
+                return False
 
     return True
