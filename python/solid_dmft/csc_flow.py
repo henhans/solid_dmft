@@ -62,7 +62,7 @@ def _run_plo_converter(general_params):
     converter = VaspConverter(filename=general_params['seedname'])
     converter.convert_dft_input()
 
-def _run_wannier90(general_params, dft_params)
+def _run_wannier90(general_params, dft_params):
     if not mpi.is_master_node():
         return
 
