@@ -35,14 +35,16 @@ import numpy as np
 from h5 import HDFArchive
 import triqs.utility.mpi as mpi
 
-# TODO: Move to triqs_dft_tools
-from triqs_ghostGA.wannier90 import Wannier90Converter
+from triqs_dft_tools.converters.wannier90 import Wannier90Converter
+# TODO: Modify triqs_dft_tools for this file
+# from triqs_ghostGA.wannier90 import Wannier90Converter
 from triqs_dft_tools.converters.vasp import VaspConverter
 from triqs_dft_tools.converters.plovasp.vaspio import VaspData
 import triqs_dft_tools.converters.plovasp.converter as plo_converter
 
-# TODO: Move to solid_dmft
-from triqs_ghostGA.grisb_cycle import grisb_cycle
+from solid_dmft.dmft_cycle import dmft_cycle
+# TODO: Move grisb_cycle to solid_dmft and import both
+# from triqs_ghostGA.grisb_cycle import grisb_cycle
 from solid_dmft.dft_managers import vasp_manager as vasp
 from solid_dmft.dft_managers import qe_manager as qe
 
