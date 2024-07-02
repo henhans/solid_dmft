@@ -119,6 +119,12 @@ def _compile_information_ghostGA(sum_k, general_params, solver_params, solvers,
     if dens is not None:
         write_to_h5['deltaN_trace'] = dens
 
+    for icrsh in range(sum_k.n_inequiv_shells):
+        write_to_h5['Gimp_time_{}'.format(icrsh)] = solvers[icrsh].G_time
+        write_to_h5['G0_freq_{}'.format(icrsh)] = solvers[icrsh].G0_freq
+        write_to_h5['Gimp_freq_{}'.format(icrsh)] = solvers[icrsh].G_freq
+        write_to_h5['Sigma_freq_{}'.format(icrsh)] = solvers[icrsh].Sigma_freq
+
     return write_to_h5
 
 def write(archive, sum_k, general_params, solver_params, solvers, it, is_sampling,
