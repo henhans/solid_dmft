@@ -398,7 +398,7 @@ def add_dmft_observables(observables, general_params, solver_params, dft_energy,
             # TODO: need to figure out how to compute the dc_energy
             for icrsh in range(sum_k.n_inequiv_shells):
                 observables['E_int'][icrsh].append(shell_multiplicity[icrsh]*E_int[icrsh].real)
-                E_corr_en += shell_multiplicity[icrsh] * (E_int[icrsh].real - sum_k.dc_energ[sum_k.inequiv_to_corr[icrsh]])
+                E_corr_en += shell_multiplicity[icrsh] * (E_int[icrsh].real)# - sum_k.dc_energ[sum_k.inequiv_to_corr[icrsh]])
 
 
     observables['E_corr_en'].append(E_corr_en)
