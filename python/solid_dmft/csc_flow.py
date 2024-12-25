@@ -35,12 +35,17 @@ import numpy as np
 from h5 import HDFArchive
 import triqs.utility.mpi as mpi
 
-from triqs_dft_tools.converters.wannier90 import Wannier90Converter
+#from triqs_dft_tools.converters.wannier90 import Wannier90Converter
+# TODO: Modify triqs_dft_tools for this file. This is a generalization of the
+# original Wannier90Converter to print also the uncorrelated orbitals.
+from triqs_ghostGA.wannier90 import Wannier90Converter
 from triqs_dft_tools.converters.vasp import VaspConverter
 from triqs_dft_tools.converters.plovasp.vaspio import VaspData
 import triqs_dft_tools.converters.plovasp.converter as plo_converter
 
 from solid_dmft.dmft_cycle import dmft_cycle
+# TODO: Move grisb_cycle to solid_dmft and import both
+from triqs_ghostGA.grisb_cycle import grisb_cycle
 from solid_dmft.dft_managers import vasp_manager as vasp
 from solid_dmft.dft_managers import qe_manager as qe
 
@@ -75,15 +80,19 @@ def _run_wannier90(general_params, dft_params):
     subprocess.check_call(command + ['-pp', general_params['seedname']], shell=False)
     subprocess.check_call(command + [general_params['seedname']], shell=False)
 
-def _run_w90converter(seedname, tolerance):
+def _run_w90converter(seedname, tolerance, ghostGA=False):
     if (not os.path.exists(seedname + '.win')
         or not os.path.exists(seedname + '.inp')):
         print('*** Wannier input/converter config file not found! '
               + 'I was looking for {0}.win and {0}.inp ***'.format(seedname))
         mpi.MPI.COMM_WORLD.Abort(1)
 
-    #TODO: choose rot_mat_type with general_params['set_rot']
-    converter = Wannier90Converter(seedname, rot_mat_type='hloc_diag', bloch_basis=True, w90zero=tolerance)
+    if not ghostGA:
+        #TODO: choose rot_mat_type with general_params['set_rot']
+        converter = Wannier90Converter(seedname, rot_mat_type='hloc_diag', bloch_basis=True, w90zero=tolerance)
+    else:
+        #TODO: Here I use rot_mat_type='non' for preliminary development. ghostGA doesn't have sigan problem.
+        converter =Wannier90Converter(seedname, rot_mat_type='none', bloch_basis=True, w90zero=tolerance)
     converter.convert_dft_input()
     mpi.barrier()
 
@@ -227,7 +236,7 @@ def _full_vasp_run(general_params, dft_params, initial_run, n_iter_dft=1, sum_k=
 
 
 # Main CSC flow method
-def csc_flow_control(general_params, solver_params, dft_params, gw_params, advanced_params):
+def csc_flow_control(general_params, solver_params, dft_params, gw_params, advanced_params, ghostGA=False):
     """
     Function to run the csc cycle. It writes and removes the vasp.lock file to
     start and stop Vasp, run the converter, run the dmft cycle and abort the job
@@ -304,27 +313,41 @@ def csc_flow_control(general_params, solver_params, dft_params, gw_params, advan
                 dft_energy = qe.read_dft_energy(general_params['seedname'], iter_dmft)
         dft_energy = mpi.bcast(dft_energy)
 
-        mpi.report('', '#'*80, 'Calling dmft_cycle')
+        if not ghostGA:
+            mpi.report('', '#'*80, 'Calling dmft_cycle')
+        else:
+            mpi.report('', '#'*80, 'Calling grisb_cycle')
 
         if mpi.is_master_node():
             start_time_dmft = timer()
 
         # Determines number of DMFT steps
-        if iter_dmft == 1:
-            iter_one_shot = general_params['n_iter_dmft_first']
-        elif iteration_offset > 0 and iter_dmft == iteration_offset + 1:
-            iter_one_shot = general_params['n_iter_dmft_per'] - (iter_dmft - 1
-                            - general_params['n_iter_dmft_first'])%general_params['n_iter_dmft_per']
+        if not ghostGA:
+            if iter_dmft == 1:
+                iter_one_shot = general_params['n_iter_dmft_first']
+            elif iteration_offset > 0 and iter_dmft == iteration_offset + 1:
+                iter_one_shot = general_params['n_iter_dmft_per'] - (iter_dmft - 1
+                                - general_params['n_iter_dmft_first'])%general_params['n_iter_dmft_per']
+            else:
+                iter_one_shot = general_params['n_iter_dmft_per']
+            # Maximum total number of iterations is n_iter_dmft+iteration_offset
+            iter_one_shot = min(iter_one_shot,
+                                general_params['n_iter_dmft'] + iteration_offset - iter_dmft + 1)
         else:
-            iter_one_shot = general_params['n_iter_dmft_per']
-        # Maximum total number of iterations is n_iter_dmft+iteration_offset
-        iter_one_shot = min(iter_one_shot,
-                            general_params['n_iter_dmft'] + iteration_offset - iter_dmft + 1)
+            # TODO: Why not use the same structure as for DMFT here? (the elif in particular)
+            if iter_dmft == 1:
+                iter_one_shot = general_params['n_iter_grisb_first']
+            else:
+                iter_one_shot = general_params['n_iter_grisb_per']
 
         ############################################################
         # run the dmft_cycle
-        is_converged, sum_k = dmft_cycle(general_params, solver_params, advanced_params, dft_params,
-                                         gw_params, iter_one_shot, irred_indices, dft_energy)
+        if not ghostGA:
+            is_converged, sum_k = dmft_cycle(general_params, solver_params, advanced_params, dft_params,
+                                             gw_params, iter_one_shot, irred_indices, dft_energy)
+        else:
+            is_converged, sum_k = grisb_cycle(general_params, solver_params, advanced_params, dft_params,
+                                              gw_params, iter_one_shot, irred_indices, dft_energy)
         ############################################################
 
         iter_dmft += iter_one_shot
@@ -336,8 +359,13 @@ def csc_flow_control(general_params, solver_params, dft_params, gw_params, advan
             print('='*80 + '\n')
 
         # If all steps are executed or calculation is converged, finish DFT+DMFT loop
-        if is_converged or iter_dmft > general_params['n_iter_dmft'] + iteration_offset:
-            break
+        if not ghostGA:
+            if is_converged or iter_dmft > general_params['n_iter_dmft'] + iteration_offset:
+                break
+        else:
+            if is_converged or iter_dmft > general_params['n_iter_grisb'] + iteration_offset:
+                break
+
 
         # Restarts DFT
         mpi.barrier()

@@ -58,6 +58,14 @@ U = "<none>"
 U_crpa_threshold = 0.0
 U_prime = "<none>"
 w_range = [-10, 10]
+# for grisb
+n_iter_grisb = "<none>"
+n_iter_grisb_first = 10
+n_iter_grisb_per = 2
+norb_baths = "<none>"
+grisb_mix = 1.0
+grisb_tol = 1e-5
+# grisb end
 
 # Keys in this section that should be passed to the triqs solver
 # explicitly need to be added to the triqs_solver_params
@@ -173,6 +181,26 @@ method = "krylov"
 one_shot = false
 tol = 1e-5
 with_fock = false
+
+# grisb solvers below
+[[solver]]
+type = "fci"
+idx_impurities = "<none>"
+
+[[solver]]
+type = "pyscf_ccsd"
+idx_impurities = "<none>"
+
+[[solver]]
+type = "pyscf_dmrg"
+idx_impurities = "<none>"
+maxM = 500
+
+[[solver]]
+type = "block2"
+idx_impurities = "<none>"
+restricted = true
+# grisb solvers end
 
 [dft]
 dft_code = "<none>"

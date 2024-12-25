@@ -90,7 +90,8 @@ def _verify_input_params_solver(params: FullConfig) -> None:
 
     # Checks that all solvers support the specified grid
     # TODO: add real-frequency support for solvers that do both (e.g., hartree)
-    supported_grids = {'real': ['ftps'], 'imag': ['cthyb', 'ctint', 'ctseg', 'hubbardI', 'hartree']}
+    supported_grids = {'real': ['ftps', 'fci', 'pyscf_ccsd', 'pyscf_dmrg', 'block2'],
+                       'imag': ['cthyb', 'ctint', 'ctseg', 'hubbardI', 'hartree', 'fci', 'pyscf_ccsd', 'pyscf_dmrg', 'block2']}
     if params['general']['beta'] is not None:
         for entry in solver_params:
             if entry['type'] not in supported_grids['imag']:
