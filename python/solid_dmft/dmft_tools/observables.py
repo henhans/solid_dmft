@@ -85,6 +85,8 @@ def prep_observables(h5_archive, sum_k, ghostGA=False):
                                       for _ in range(n_inequiv_shells)]
             observables['Lambda'] = [{spin: [] for spin in sum_k.spin_block_names[sum_k.SO]}
                                       for _ in range(n_inequiv_shells)]
+            observables['eloc_orig'] = [{spin: [] for spin in sum_k.spin_block_names[sum_k.SO]}
+                                      for _ in range(n_inequiv_shells)]
         observables['orb_occ'] = [{spin: [] for spin in sum_k.spin_block_names[sum_k.SO]}
                                   for _ in range(n_inequiv_shells)]
         observables['orb_Z'] = [{spin: [] for spin in sum_k.spin_block_names[sum_k.SO]}
