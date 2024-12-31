@@ -354,8 +354,8 @@ def add_dmft_observables(observables, general_params, solver_params, map_imp_sol
             if (solver_params[0]['type'] in ['fci', 'pyscf_dmrg', 'pyscf_ccsd']): # [0] assume only one type of solver
                 E_int = []
                 for icrsh in range(sum_k.n_inequiv_shells):
-                    E_int_icrsh = solvers[icrsh].E2loc + solvers[icrsh].E1loc
-                    E_Lambda = 0.0
+                    E_int_icrsh = solvers[icrsh].E2loc + solvers[icrsh].E1loc_nodc # E1loc without double-counting potential contribution
+                    E_Lambda = 0.0 # Subract the Lambda term in Hqp = R e R^\dagger +Lambda which cancels to zero at the saddle-point
                     for sp, isp in sum_k.spin_names_to_ind[sum_k.SO].items():
                         E_Lambda += np.sum(observables['Lambda'][icrsh][sp]*sum_k.Delta[icrsh][sp])
                     E_int_icrsh -= E_Lambda
@@ -383,7 +383,7 @@ def add_dmft_observables(observables, general_params, solver_params, map_imp_sol
             # TODO: need to figure out how to compute the dc_energy
             for icrsh in range(sum_k.n_inequiv_shells):
                 observables['E_int'][icrsh].append(shell_multiplicity[icrsh]*E_int[icrsh].real)
-                E_corr_en += shell_multiplicity[icrsh] * (E_int[icrsh].real)# - sum_k.dc_energ[sum_k.inequiv_to_corr[icrsh]])
+                E_corr_en += shell_multiplicity[icrsh] * (E_int[icrsh].real - sum_k.dc_energ[sum_k.inequiv_to_corr[icrsh]])
 
     observables['E_corr_en'].append(E_corr_en)
 
