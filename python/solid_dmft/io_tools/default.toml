@@ -186,6 +186,7 @@ with_fock = false
 [[solver]]
 type = "fci"
 idx_impurities = "<none>"
+num_eig = 4
 
 [[solver]]
 type = "pyscf_ccsd"
