@@ -460,6 +460,7 @@ mpi_env : string, default = 'default'
         Possible values:
 
         * 'default'
+        * 'numa'
         * 'openmpi'
         * 'openmpi-intra'
         * 'mpich'

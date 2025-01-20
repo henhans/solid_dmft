@@ -55,7 +55,7 @@ def create_hostfile(number_cores, cluster_name):
     string: name of the hostfile if not run locally and if called by master node
     """
 
-    if cluster_name == 'default':
+    if cluster_name == 'default' or cluster_name == 'numa':
         return None
 
     hostnames = mpi.world.gather(socket.gethostname(), root=0)
@@ -122,7 +122,9 @@ def get_mpi_arguments(mpi_profile, mpi_exe, number_cores, dft_exe, hostfile):
     """
 
     if mpi_profile == 'default':
-#        return [mpi_exe, '-np', str(number_cores)] + shlex.split(dft_exe)
+        return [mpi_exe, '-np', str(number_cores)] + shlex.split(dft_exe)
+
+    if mpi_profile == 'numa':
         # We need --bind-to numa to properly use the resource of numa architecture, e.g., AMD EPYC 9754 processors
         return [mpi_exe,'--bind-to', 'numa', '-np', str(number_cores)] + shlex.split(dft_exe)
 
