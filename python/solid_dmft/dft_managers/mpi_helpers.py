@@ -122,7 +122,9 @@ def get_mpi_arguments(mpi_profile, mpi_exe, number_cores, dft_exe, hostfile):
     """
 
     if mpi_profile == 'default':
-        return [mpi_exe, '-np', str(number_cores)] + shlex.split(dft_exe)
+#        return [mpi_exe, '-np', str(number_cores)] + shlex.split(dft_exe)
+        # We need --bind-to numa to properly use the resource of numa architecture, e.g., AMD EPYC 9754 processors
+        return [mpi_exe,'--bind-to', 'numa', '-np', str(number_cores)] + shlex.split(dft_exe)
 
     # For the second node, mpirun starts DFT by using ssh
     # Therefore we need to handover the env variables with -x
