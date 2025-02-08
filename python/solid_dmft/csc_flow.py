@@ -274,6 +274,8 @@ def csc_flow_control(general_params, solver_params, dft_params, gw_params, advan
     iteration_offset = mpi.bcast(iteration_offset)
 
     iter_dmft = iteration_offset+1
+    if ghostGA: 
+       iter_grisb = 0 # NOTE: maybe we don't need this, but I haven't figure out a better way.
 
     # Runs DFT once and converter
     mpi.barrier()
@@ -363,7 +365,13 @@ def csc_flow_control(general_params, solver_params, dft_params, gw_params, advan
             if is_converged or iter_dmft > general_params['n_iter_dmft'] + iteration_offset:
                 break
         else:
-            if is_converged or iter_dmft > general_params['n_iter_grisb'] + iteration_offset:
+            # NOTE: The grisb convergence critetria is not implemented yet. Here we let the iteration
+            # run until the maximum CSC step(n_ter_grisb). We can monitor the total energy to
+            # checksee convergence. We will implemet a proper convergence criteria in the future.
+            iter_grisb += 1
+            print('iter_grisb=', iter_grisb, 'n_iter_grisb=', general_params['n_iter_grisb'], 'iteration_offset=', iteration_offset)
+            if iter_grisb >= general_params['n_iter_grisb'] + iteration_offset:
+            #if is_converged or iter_dmft > general_params['n_iter_grisb'] + iteration_offset:
                 break
 
 
