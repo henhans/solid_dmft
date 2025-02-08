@@ -9,6 +9,7 @@ csc = false
 dc = true
 dc_dmft = "<none>"
 dc_type = "<none>"
+dc_nnom = "<none>"
 dlr_eps = "<none>"
 dlr_wmax = "<none>"
 enforce_off_diag = true

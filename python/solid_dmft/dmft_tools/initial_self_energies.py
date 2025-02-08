@@ -512,8 +512,28 @@ def determine_dc_and_initial_sigma(general_params, gw_params, advanced_params, s
 
         # Sets DC as Sigma because no initial Sigma given
         elif general_params['dc']:
-            sum_k = calculate_double_counting(sum_k, density_mat_dft, general_params, gw_params,
-                                              advanced_params, solver_type_per_imp, G_loc_all)
+            # Add test for fixed double counting as implemented in K. Haule's edmft nominal double countin
+            # with fixed nominal valence.
+            if general_params['dc_nnom'] is not None:
+                # generate nominal density matrix from dcnnom assuming spin symmetry
+                density_mat_nom = [{} for icrsh in range(sum_k.n_corr_shells)]
+                for icrsh in range(sum_k.n_corr_shells):
+                    dim = sum_k.corr_shells[icrsh]['dim']
+                    nnom = general_params['dc_nnom'][icrsh]
+                    nnom_per_spin = nnom/2. #NOTE: assume spin symmetry. Not for case with SOC
+                    nnom_per_spin_orb = nnom_per_spin/float(dim)
+                    #print(nnom, nnom_per_spin, nnom_per_spin_orb)
+                    for sp, isp in sum_k.spin_names_to_ind[sum_k.SO].items():
+                        dm = nnom_per_spin_orb*np.eye(dim,dtype=complex)
+                        density_mat_nom[icrsh][sp+"_0"] = dm
+                print('nominal density matrix for double counting:')
+                print(density_mat_nom)
+                sum_k = calculate_double_counting(sum_k, density_mat_nom, general_params, gw_params,
+                                                  advanced_params, solver_type_per_imp, G_loc_all)
+
+            else:
+                sum_k = calculate_double_counting(sum_k, density_mat_dft, general_params, gw_params,
+                                                  advanced_params, solver_type_per_imp, G_loc_all)
 
             # initialize Sigma from sum_k
             start_sigma = [sum_k.block_structure.create_gf(ish=iineq, gf_function=Gf, space='solver',
