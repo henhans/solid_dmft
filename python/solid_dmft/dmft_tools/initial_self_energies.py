@@ -193,6 +193,22 @@ def calculate_double_counting(sum_k, density_matrix, general_params, gw_params, 
 
         else:
             mpi.report(f'\nCalculating standard DC for impurity {icrsh} with U={advanced_params["dc_U"][icrsh]} and J={advanced_params["dc_J"][icrsh]}')
+            # construct fixed nominal double-counting density matrix
+            if general_params['dc_nnom'] is not None:
+                # generate nominal density matrix from dcnnom assuming spin symmetry
+                density_matrix_DC = [{} for icrsh in range(sum_k.n_corr_shells)]
+                for icrsh in range(sum_k.n_corr_shells):
+                    dim = sum_k.corr_shells[icrsh]['dim']
+                    nnom = general_params['dc_nnom'][icrsh]
+                    nnom_per_spin = nnom/2. #NOTE: assume spin symmetry. Not for case with SOC
+                    nnom_per_spin_orb = nnom_per_spin/float(dim)
+                    #print(nnom, nnom_per_spin, nnom_per_spin_orb)
+                    for sp, isp in sum_k.spin_names_to_ind[sum_k.SO].items():
+                        dm = nnom_per_spin_orb*np.eye(dim,dtype=complex)
+                        density_matrix_DC[icrsh][sp+"_0"] = dm
+                print('nominal density matrix for double counting:')
+                print(density_matrix_DC)
+
             sum_k.calc_dc(density_matrix_DC[icrsh], U_interact=advanced_params['dc_U'][icrsh],
                           J_hund=advanced_params['dc_J'][icrsh], orb=icrsh,
                           use_dc_formula=general_params['dc_type'][icrsh])
