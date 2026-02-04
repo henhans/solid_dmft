@@ -39,7 +39,8 @@ import triqs.utility.mpi as mpi
 # TODO: Modify triqs_dft_tools for this file. This is a generalization of the
 # original Wannier90Converter to print also the uncorrelated orbitals.
 from triqs_ghostGA.wannier90 import Wannier90Converter
-from triqs_dft_tools.converters.vasp import VaspConverter
+from triqs_ghostGA.vasp import VaspConverter
+#from triqs_dft_tools.converters.vasp import VaspConverter
 from triqs_dft_tools.converters.plovasp.vaspio import VaspData
 import triqs_dft_tools.converters.plovasp.converter as plo_converter
 
@@ -49,7 +50,7 @@ from triqs_ghostGA.grisb_cycle import grisb_cycle
 from solid_dmft.dft_managers import vasp_manager as vasp
 from solid_dmft.dft_managers import qe_manager as qe
 
-def _run_plo_converter(general_params, dft_params):
+def _run_plo_converter(general_params, dft_params, ghostGA=False):
     if not mpi.is_master_node():
         return
 
@@ -152,7 +153,7 @@ def _store_dft_eigvals(path_to_h5, iteration, projector_type):
 
         archive['dft_eigvals']['it_'+str(iteration)] = eigenvals
 
-def _full_vasp_run(general_params, dft_params, initial_run, n_iter_dft=1, sum_k=None):
+def _full_vasp_run(general_params, dft_params, initial_run, n_iter_dft=1, sum_k=None, ghostGA=False):
     """
     Performs a complete DFT cycle in Vasp and the correct converter. If
     initial_run, Vasp is starting and performing a normal scf calculation
@@ -199,7 +200,7 @@ def _full_vasp_run(general_params, dft_params, initial_run, n_iter_dft=1, sum_k=
             vasp.run_charge_update()
 
         if dft_params['projector_type'] == 'plo':
-            _run_plo_converter(general_params, dft_params)
+            _run_plo_converter(general_params, dft_params, ghostGA)
             irred_indices = None
         elif dft_params['projector_type'] == 'w90':
             _run_wannier90(general_params, dft_params)
@@ -289,7 +290,7 @@ def csc_flow_control(general_params, solver_params, dft_params, gw_params, advan
         else:
             _full_qe_run(general_params['seedname'], dft_params, 'restart')
     elif dft_params['dft_code'] == 'vasp':
-        vasp_process_id, irred_indices = _full_vasp_run(general_params, dft_params, True)
+        vasp_process_id, irred_indices = _full_vasp_run(general_params, dft_params, True, ghostGA=ghostGA)
 
     mpi.barrier()
     end_time_dft = timer()
@@ -389,7 +390,7 @@ def csc_flow_control(general_params, solver_params, dft_params, gw_params, advan
                 n_iter_dft = dft_params['n_iter_first']
             else:
                 n_iter_dft = dft_params['n_iter']
-            _, irred_indices = _full_vasp_run(general_params, dft_params, False, n_iter_dft, sum_k)
+            _, irred_indices = _full_vasp_run(general_params, dft_params, False, n_iter_dft, sum_k, ghostGA=ghostGA)
 
         mpi.barrier()
         end_time_dft = timer()
