@@ -103,7 +103,7 @@ def _run_w90converter(seedname, tolerance, ghostGA=False):
             assert archive['dft_input']['use_rotations'], 'Creation of rot_mat failed in W90 converter'
     mpi.barrier()
 
-def _full_qe_run(seedname, dft_params, mode):
+def _full_qe_run(seedname, dft_params, mode, ghostGA=False):
     assert mode in ('initial', 'restart', 'update')
 
     # runs a full iteration of DFT
@@ -129,7 +129,7 @@ def _full_qe_run(seedname, dft_params, mode):
     qe_wrapper('win_pp')
     qe_wrapper('pw2wan')
     qe_wrapper('win')
-    _run_w90converter(seedname, dft_params['w90_tolerance'])
+    _run_w90converter(seedname, dft_params['w90_tolerance'], ghostGA)
 
 
 def _store_dft_eigvals(path_to_h5, iteration, projector_type):
@@ -205,7 +205,7 @@ def _full_vasp_run(general_params, dft_params, initial_run, n_iter_dft=1, sum_k=
         elif dft_params['projector_type'] == 'w90':
             _run_wannier90(general_params, dft_params)
             mpi.barrier()
-            _run_w90converter(general_params['seedname'], dft_params['w90_tolerance'])
+            _run_w90converter(general_params['seedname'], dft_params['w90_tolerance'], ghostGA)
             mpi.barrier()
             kpts = None
             if mpi.is_master_node():
@@ -286,9 +286,9 @@ def csc_flow_control(general_params, solver_params, dft_params, gw_params, advan
 
     if dft_params['dft_code'] == 'qe':
         if iteration_offset == 0:
-            _full_qe_run(general_params['seedname'], dft_params, 'initial')
+            _full_qe_run(general_params['seedname'], dft_params, 'initial', ghostGA)
         else:
-            _full_qe_run(general_params['seedname'], dft_params, 'restart')
+            _full_qe_run(general_params['seedname'], dft_params, 'restart', ghostGA)
     elif dft_params['dft_code'] == 'vasp':
         vasp_process_id, irred_indices = _full_vasp_run(general_params, dft_params, True, ghostGA=ghostGA)
 
@@ -370,7 +370,8 @@ def csc_flow_control(general_params, solver_params, dft_params, gw_params, advan
             # run until the maximum CSC step(n_ter_grisb). We can monitor the total energy to
             # checksee convergence. We will implemet a proper convergence criteria in the future.
             iter_grisb += 1
-            print('iter_grisb=', iter_grisb, 'n_iter_grisb=', general_params['n_iter_grisb'], 'iteration_offset=', iteration_offset)
+            if mpi.is_master_node():
+                print('iter_grisb=', iter_grisb, 'n_iter_grisb=', general_params['n_iter_grisb'], 'iteration_offset=', iteration_offset)
             if iter_grisb >= general_params['n_iter_grisb'] + iteration_offset:
             #if is_converged or iter_dmft > general_params['n_iter_grisb'] + iteration_offset:
                 break
@@ -383,7 +384,7 @@ def csc_flow_control(general_params, solver_params, dft_params, gw_params, advan
 
         # Runs DFT and converter
         if dft_params['dft_code'] == 'qe':
-            _full_qe_run(general_params['seedname'], dft_params, 'update')
+            _full_qe_run(general_params['seedname'], dft_params, 'update', ghostGA)
         elif dft_params['dft_code'] == 'vasp':
             # Determines number of DFT steps
             if iter_dmft == general_params['n_iter_dmft_first'] + 1:
